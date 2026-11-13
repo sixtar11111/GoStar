@@ -1,3 +1,15 @@
+# GoStar 0.6.2
+
+- Load executable help only from the configured library directory.
+- Use a private temporary directory for each plugin process.
+- Bound incoming SSE lines before allocation.
+- Redact credentials from errors, answers and fragmented streaming text.
+- Simplify the English and Chinese README.
+
+中文：修复帮助脚本来源、临时目录、流式响应长度和密钥回显四处问题；精简中英文 README。
+
+[Security review](docs/SECURITY_REVIEW_062.md) · [Test results](docs/VALIDATION_062.md)
+
 # GoStar 0.6.1
 
 - Renamed the plugin, Tools menu entry, window, chat identity and transcript export to **GoStar**. Kept internal module/settings IDs for upgrade compatibility.

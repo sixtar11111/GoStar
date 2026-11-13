@@ -15,7 +15,7 @@ from xml.sax.saxutils import quoteattr
 ROOT = Path(__file__).resolve().parent.parent
 CODE_NAME = "local.starccm.assistant"
 JAR_NAME = "local-starccm-assistant.jar"
-VERSION = "0.6.1"
+VERSION = "0.6.2"
 DEPENDENCIES = "star.coremodule > 19.4.9, org.openide.windows > 6.79, org.openide.util > 9.10, org.openide.util.lookup > 8.36"
 
 def manifest_bytes(values: dict[str, str]) -> bytes:

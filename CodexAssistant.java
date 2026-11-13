@@ -2140,6 +2140,17 @@ public class CodexAssistant extends StarMacro {
         return runApi(address, selectedModel, key, input, timeoutSeconds, false, null, null);
     }
 
+    private static final class ApiTextFilter implements Consumer<String> {
+        private final String key;private final Consumer<String> target;private String pending="";
+        ApiTextFilter(String key,Consumer<String> target){this.key=key;this.target=target;}
+        public void accept(String text){
+            String value=(pending+text).replace(key,"[已隐藏密钥]");int keep=0;
+            for(int size=Math.min(key.length()-1,value.length());size>0;size--)if(value.regionMatches(value.length()-size,key,0,size)){keep=size;break;}
+            int emit=value.length()-keep;if(emit>0)target.accept(value.substring(0,emit));pending=value.substring(emit);
+        }
+        void finish(){if(!pending.isEmpty())target.accept(pending.replace(key,"[已隐藏密钥]"));pending="";}
+    }
+
     private String runApi(String address, String selectedModel, String key,
                           String input, int timeoutSeconds, boolean stream,
                           Consumer<String> onText, Consumer<String> onPhase) throws Exception {
@@ -2156,6 +2167,7 @@ public class CodexAssistant extends StarMacro {
                      && ("localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host))))) {
             throw new IOException("API 地址须使用 HTTPS；本机 localhost 可使用 HTTP。");
         }
+        ApiTextFilter filteredText=onText==null?null:new ApiTextFilter(key,onText);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         synchronized(requestLifecycleLock) {
             verifyApiRoute(address,selectedModel,key);
@@ -2189,7 +2201,7 @@ public class CodexAssistant extends StarMacro {
             String contentType = connection.getContentType();
             Consumer<String> currentText=onText==null?null:chunk->{
                 RequestRoute route=requestRoutes.get();
-                if(route==null || route.generation==requestGeneration)onText.accept(chunk);
+                if(route==null || route.generation==requestGeneration)filteredText.accept(chunk);
             };
             Consumer<String> currentPhase=onPhase==null?null:phase->{
                 RequestRoute route=requestRoutes.get();
@@ -2198,7 +2210,8 @@ public class CodexAssistant extends StarMacro {
             if (stream && (contentType == null || !contentType.toLowerCase(java.util.Locale.ROOT).contains("json"))) {
                 String answer=readApiStream(connection.getInputStream(), currentText, currentPhase);
                 verifyRequestRoute();
-                return answer;
+                if(filteredText!=null)filteredText.finish();
+                return answer.replace(key,"[已隐藏密钥]");
             }
             String rawResponse=readLimited(connection.getInputStream(), MAX_OUTPUT_CHARS);
             verifyRequestRoute();
@@ -2209,13 +2222,18 @@ public class CodexAssistant extends StarMacro {
                     for(Map.Entry<?,?> e:((Map<?,?>)((Map<?,?>)parsedUsage).get("usage")).entrySet())
                         usage.put(String.valueOf(e.getKey()),e.getValue());
             } catch(Exception ignored) { }
-            String answer = parseApiResponse(rawResponse);
+            String answer = parseApiResponse(rawResponse).replace(key,"[已隐藏密钥]");
             synchronized(requestLifecycleLock) {
                 verifyRequestRoute();
                 lastApiUsage=usage;
-                if (stream && currentText != null) currentText.accept(answer);
+                if (stream && currentText != null){currentText.accept(answer);filteredText.finish();}
             }
             return answer;
+        } catch(Exception failure) {
+            String original=rootMessage(failure),safe=original.replace(key,"[已隐藏密钥]");
+            // Do not attach a cause containing the unredacted provider response.
+            if(!safe.equals(original))throw new IOException(safe);
+            throw failure;
         } finally {
             connection.disconnect();
             synchronized(requestLifecycleLock) {
@@ -2294,7 +2312,7 @@ public class CodexAssistant extends StarMacro {
         StringBuilder event = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
             String line;
-            while ((line = reader.readLine()) != null) {
+            while ((line = readBoundedApiLine(reader,MAX_OUTPUT_CHARS)) != null) {
                 if (line.startsWith("data:")) {
                     if (event.length() > 0) event.append('\n');
                     event.append(line.substring(5).trim());
@@ -2309,6 +2327,16 @@ public class CodexAssistant extends StarMacro {
         if(!state.done && !state.finished)throw new IOException("API 流提前结束（Premature EOF），未确认完整回复，未执行本轮方案。");
         if(state.answer.toString().trim().isEmpty())throw emptyApiAnswer(state.reasoning?Map.of("reasoning_content","present"):Map.of());
         return state.answer.toString().trim();
+    }
+
+    private static String readBoundedApiLine(BufferedReader reader,int maximum)throws IOException {
+        StringBuilder line=new StringBuilder();boolean any=false;int value;
+        while((value=reader.read())!=-1){
+            any=true;if(value=='\n')return line.toString();
+            if(value=='\r'){reader.mark(1);int next=reader.read();if(next!=-1&&next!='\n')reader.reset();return line.toString();}
+            if(line.length()>=maximum)throw new IOException("API 回复过大。");line.append((char)value);
+        }
+        return any?line.toString():null;
     }
 
     private static boolean consumeApiEvent(String data, ApiStreamState state,
@@ -3839,7 +3867,7 @@ public class CodexAssistant extends StarMacro {
             Object sourceValue = result.get("sources");
             if (!contextText.isEmpty() && sourceValue instanceof List && !((List<?>) sourceValue).isEmpty()) {
                 footer.append("\n\n── 已读取的帮助资料（引用见回答正文）──\n")
-                    .append("基线：21.04；本机 19.04 请核对。\n");
+                    .append("来源：").append(result.containsKey("baseline")?result.get("baseline"):"本机资料").append("\n");
                 footer.append("检索词：").append(result.get("terms")).append('\n');
                 int number = 0;
                 for (Object item : (List<?>) sourceValue) {
@@ -3864,8 +3892,6 @@ public class CodexAssistant extends StarMacro {
         if (!assistantHomeOverride.isEmpty()) roots.add(Paths.get(assistantHomeOverride));
         String configured = System.getenv("STARCCM_ASSISTANT_HOME");
         if (configured != null && !configured.trim().isEmpty()) roots.add(Paths.get(configured.trim()));
-        roots.add(Paths.get(System.getProperty("user.dir")));
-        roots.add(Paths.get("C:/project/starccm"));
         for (Path root : roots) {
             Path bridge = root.resolve("scripts/starccm_skill_bridge.py").toAbsolutePath().normalize();
             if (Files.isRegularFile(bridge)) return bridge;
@@ -3892,10 +3918,13 @@ public class CodexAssistant extends StarMacro {
         return isWindows() ? "python.exe" : "python3";
     }
 
-    private static Path runtimeDirectory() throws IOException {
-        Path path = Paths.get(System.getProperty("java.io.tmpdir"), "gostar");
-        Files.createDirectories(path);
-        return path;
+    private static Path privateRuntimeDirectory;
+    private static synchronized Path runtimeDirectory() throws IOException {
+        if(privateRuntimeDirectory==null){
+            privateRuntimeDirectory=Files.createTempDirectory("gostar-");
+            privateRuntimeDirectory.toFile().deleteOnExit();
+        }
+        return privateRuntimeDirectory;
     }
 
     private static String findCodexExecutable() throws IOException {

@@ -1,8 +1,8 @@
-# GoStar 0.6.1 · Installation / 安装
+# GoStar 0.6.2 · Installation / 安装
 
 **Target / 适用环境:** licensed STAR-CCM+ 2406.0001 / 19.04.009-R8, Java 21. Linux tested. Python 3.10+ is optional for local help; the native plugin and Java API inspection do not require Python. No Siemens JAR or license is supplied.
 
-1. Extract the release ZIP. Install `plugin/GoStar-0.6.1.nbm` through STAR's Tools → Plugins → Downloaded → Add Plugins. The unsigned-module warning is expected for this local build. Restart STAR after upgrade.
+1. Extract the release ZIP. Install `plugin/GoStar-0.6.2.nbm` through STAR's Tools → Plugins → Downloaded → Add Plugins. The unsigned-module warning is expected for this local build. Restart STAR after upgrade.
 2. Open Tools → GoStar and connect the intended SIM. This is the simulation that receives edits. For first use, work on a copy.
 3. Settings → provider / endpoint / model: configure your own connection. DeepSeek's model ID is editable in Model settings; use the ID accepted by your endpoint. Explicitly switching models is supported; failures never trigger a hidden fallback provider. The provider label “Codex CLI” still refers to that separate provider, not the plugin name.
 4. Optional: select `runtime/` using Simulation ⋯ → Library directory. Python reads GoStar's own notes and the installed STAR help. Set `STARCCM_HOME` for nonstandard installations, or `GOSTAR_HELP_ROOT` to the installed `doc/<language>/online/STARCCMP` directory. No commercial documentation is redistributed. If help is absent, the tool reports it; it does not pretend that implementation notes are official documentation.
@@ -23,4 +23,4 @@ python3 plugin/build_plugin.py --star-home /path/to/STAR-CCM+19.04.009-R8 --jdk 
 python3 packaging/build_distributions.py
 ```
 
-The branded NBM is `build/plugin/GoStar-0.6.1.nbm`. A byte-identical NBM with the legacy module filename is retained for build/update compatibility. Do not install both copies. Plugin ZIPs contain no test classes, keys, user simulations or vendor libraries.
+The branded NBM is `build/plugin/GoStar-0.6.2.nbm`. A byte-identical NBM with the legacy module filename is retained for build/update compatibility. Do not install both copies. Plugin ZIPs contain no test classes, keys, user simulations or vendor libraries.

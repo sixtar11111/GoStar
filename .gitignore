@@ -36,3 +36,6 @@ dist/*
 !dist/GoStar-0.6.1.zip
 !dist/GoStar-0.6.1.nbm
 !dist/SHA256SUMS.txt
+
+!dist/GoStar-0.6.2.zip
+!dist/GoStar-0.6.2.nbm

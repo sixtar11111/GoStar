@@ -1,8 +1,12 @@
 """Portable local-release checks; no licensed STAR process, credentials or network."""
 import importlib.util, io, json, os, re, subprocess, sys, tempfile, unittest, zipfile
+
 from pathlib import Path
 from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
+version_spec=importlib.util.spec_from_file_location("build_version",ROOT/"plugin/build_plugin.py")
+version_module=importlib.util.module_from_spec(version_spec);version_spec.loader.exec_module(version_module)
+VERSION=version_module.VERSION
 spec=importlib.util.spec_from_file_location('help_local',ROOT/'scripts/gostar_local_help.py')
 help_local=importlib.util.module_from_spec(spec);spec.loader.exec_module(help_local)
 
@@ -35,19 +39,26 @@ class GoStarReleaseTests(unittest.TestCase):
   self.assertIn('create_aerodynamic_report',core);self.assertIn('GoStar-chat.txt',core)
   self.assertIn('Codex CLI',core)  # real provider name is preserved
  def test_distribution(self):
-  archive=ROOT/'dist/GoStar-0.6.1.zip'
+  archive=ROOT/f'dist/GoStar-{VERSION}.zip'
   self.assertTrue(archive.is_file(),'Build the public package first')
   import hashlib
   with zipfile.ZipFile(archive) as z:
-   prefix='GoStar-0.6.1/';manifest=json.loads(z.read(prefix+'MANIFEST.json'))
+   prefix=f'GoStar-{VERSION}/';manifest=json.loads(z.read(prefix+'MANIFEST.json'))
    for rel,digest in manifest['sha256'].items():self.assertEqual(hashlib.sha256(z.read(prefix+rel)).hexdigest(),digest)
    for name in z.namelist():
     self.assertNotIn('star-ccm-skill/',name);self.assertFalse(name.lower().endswith(('.sim','.step','.stp','.pem','.key','.log')))
-   with zipfile.ZipFile(io.BytesIO(z.read(prefix+'plugin/GoStar-0.6.1.nbm'))) as nbm:
+   with zipfile.ZipFile(io.BytesIO(z.read(prefix+f'plugin/GoStar-{VERSION}.nbm'))) as nbm:
     self.assertIn(b'GoStar',nbm.read('Info/info.xml'))
     with zipfile.ZipFile(io.BytesIO(nbm.read('netbeans/modules/local-starccm-assistant.jar'))) as jar:
      self.assertIn('local/starccm/assistant/AerodynamicReports.class',jar.namelist());self.assertFalse(any('NativeSmoke' in n or '061Native' in n or '061Readback' in n for n in jar.namelist()))
      self.assertEqual(jar.read('local/starccm/assistant/installation.properties'),b'assistant.home=\n')
+ def test_readme_and_package_match(self):
+  with zipfile.ZipFile(ROOT/f'dist/GoStar-{VERSION}.zip') as z:
+   for name in ('README.md','README.zh-CN.md'):
+    data=(ROOT/name).read_bytes();self.assertEqual(z.read(f'GoStar-{VERSION}/'+name),data)
+    text=data.decode('utf-8')
+    for phrase in ('公开代码不代表','不是通用气动默认值','不是任意 Java 执行器','not universal aerodynamic defaults','does not itself grant an open-source license'):
+     self.assertNotIn(phrase,text)
  def test_readme_local_links(self):
   for rel in ('README.md','README.zh-CN.md','docs/INSTALL.md','docs/REPORTS.md'):
    path=ROOT/rel

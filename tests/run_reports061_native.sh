@@ -2,7 +2,7 @@
 set -euo pipefail
 test_source="$(cd "$(dirname "$0")/.." && pwd)"
 test_output="${1:-/tmp/starccm-capabilities060/reports061-acceptance}"
-test_nbm="${2:-$test_source/build/plugin/local.starccm.assistant-0.6.1.nbm}"
+test_nbm="${2:-$test_source/build/plugin/local.starccm.assistant-0.6.2.nbm}"
 python3 - "$test_source" "$test_output" "$test_nbm" <<'PY'
 from pathlib import Path
 import hashlib,json,os,signal,subprocess,sys,time,zipfile

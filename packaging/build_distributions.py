@@ -21,7 +21,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='gostar-package-') as temp:
         folder=Path(temp)/f'GoStar-{VERSION}'
         put(nbm,folder/'plugin'/nbm.name)
-        for rel in ('README.md','README.zh-CN.md','docs/INSTALL.md','docs/REPORTS.md','docs/VALIDATION_061.md'):
+        for rel in ('README.md','README.zh-CN.md','docs/INSTALL.md','docs/REPORTS.md','docs/VALIDATION_061.md','docs/VALIDATION_062.md','docs/SECURITY_REVIEW_062.md'):
             put(ROOT/rel,folder/rel)
         for name in ('starccm_skill_bridge.py','gostar_local_help.py'):
             put(ROOT/'scripts'/name,folder/'runtime/scripts'/name)
