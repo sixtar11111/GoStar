@@ -1,0 +1,38 @@
+# Build products and temporary runtime state
+build/
+__pycache__/
+*.py[cod]
+*.class
+validation/
+.ai-reports/
+*.ai-reports/
+*.log
+*.tmp
+profile/
+prefs/
+# User models and proprietary datasets
+*.sim
+*.sim~
+*.step
+*.stp
+*.iges
+*.igs
+*.cgns
+*.stl
+*.x_b
+*.x_t
+# Credentials and local settings
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*credentials*.json
+auth.json
+kimi.txt
+license.dat
+# Curated public release files only
+dist/*
+!dist/GoStar-0.6.1.zip
+!dist/GoStar-0.6.1.nbm
+!dist/SHA256SUMS.txt
